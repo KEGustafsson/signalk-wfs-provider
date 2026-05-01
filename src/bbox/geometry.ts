@@ -19,7 +19,8 @@ export function distanceNm(
 ): number {
   const R = 3440.065 // Earth radius in nautical miles
   const dLat = (lat2 - lat1) * (Math.PI / 180)
-  const dLon = (lon2 - lon1) * (Math.PI / 180)
+  const dLonDeg = ((lon2 - lon1 + 540) % 360) - 180
+  const dLon = dLonDeg * (Math.PI / 180)
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos((lat1 * Math.PI) / 180) *

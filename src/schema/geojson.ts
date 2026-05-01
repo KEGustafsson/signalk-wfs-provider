@@ -10,8 +10,8 @@ export const featureCollectionSchema = {
         required: ['type', 'geometry', 'properties'],
         properties: {
           type: { type: 'string', const: 'Feature' },
-          geometry: { type: 'object' },
-          properties: {},
+          geometry: { anyOf: [{ type: 'object' }, { type: 'null' }] },
+          properties: { anyOf: [{ type: 'object' }, { type: 'null' }] },
         },
       },
     },

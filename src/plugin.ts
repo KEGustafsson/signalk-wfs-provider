@@ -97,9 +97,18 @@ export class Plugin {
 
     const enabledLayers = provider.layers.filter((l) => l.enabled)
 
+    let inFlight: Promise<void> | null = null
     const fetchAll = async (bbox?: Bbox) => {
-      for (const layerCfg of enabledLayers) {
-        await this.fetchLayer(client, provider, layerCfg.typeName, layerCfg.maxFeatures, bbox)
+      if (inFlight) return
+      inFlight = (async () => {
+        for (const layerCfg of enabledLayers) {
+          await this.fetchLayer(client, provider, layerCfg.typeName, layerCfg.maxFeatures, bbox)
+        }
+      })()
+      try {
+        await inFlight
+      } finally {
+        inFlight = null
       }
     }
 
@@ -131,7 +140,18 @@ export class Plugin {
         const sub = this.app.streambundle
           .getSelfBus('navigation.position')
           .onValue((v) => {
-            const pos = v.value as { latitude: number; longitude: number }
+            const raw = (v as { value?: unknown }).value as
+              | { latitude?: unknown; longitude?: unknown }
+              | undefined
+            if (
+              typeof raw?.latitude !== 'number' ||
+              typeof raw?.longitude !== 'number' ||
+              !Number.isFinite(raw.latitude) ||
+              !Number.isFinite(raw.longitude)
+            ) {
+              return
+            }
+            const pos = { latitude: raw.latitude, longitude: raw.longitude }
             for (const mgr of this.bboxManagers.values()) {
               mgr.onPosition(pos)
             }

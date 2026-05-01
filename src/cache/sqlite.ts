@@ -6,6 +6,7 @@ import type { Bbox } from '../bbox/geometry.js'
 
 export class SqliteCache {
   private db: DatabaseSync
+  private closed = false
 
   constructor(cacheDir: string) {
     fs.mkdirSync(cacheDir, { recursive: true })
@@ -26,6 +27,7 @@ export class SqliteCache {
   }
 
   save(layer: CachedLayer): void {
+    if (this.closed) return
     const stmt = this.db.prepare(`
       INSERT OR REPLACE INTO layers
         (provider_id, type_name, fetched_at, bbox_json, etag, last_modified, geojson_blob)
@@ -43,6 +45,7 @@ export class SqliteCache {
   }
 
   loadAll(): CachedLayer[] {
+    if (this.closed) return []
     const rows = this.db.prepare('SELECT * FROM layers').all() as Array<{
       provider_id: string
       type_name: string
@@ -65,6 +68,8 @@ export class SqliteCache {
   }
 
   close(): void {
+    if (this.closed) return
+    this.closed = true
     this.db.close()
   }
 }

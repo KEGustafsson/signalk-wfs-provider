@@ -71,15 +71,18 @@ export function parseCapabilities(xml: string): Capabilities {
     const bb = ft['ows:WGS84BoundingBox'] ?? ft['WGS84BoundingBox']
     if (bb) {
       const bbRec = bb as Record<string, unknown>
-      const lower = String(bbRec['ows:LowerCorner'] ?? bbRec['LowerCorner'] ?? '').split(' ')
-      const upper = String(bbRec['ows:UpperCorner'] ?? bbRec['UpperCorner'] ?? '').split(' ')
+      const lower = String(bbRec['ows:LowerCorner'] ?? bbRec['LowerCorner'] ?? '').trim().split(/\s+/)
+      const upper = String(bbRec['ows:UpperCorner'] ?? bbRec['UpperCorner'] ?? '').trim().split(/\s+/)
       if (lower.length === 2 && upper.length === 2) {
-        wgs84BoundingBox = [
-          parseFloat(lower[0]),
-          parseFloat(lower[1]),
-          parseFloat(upper[0]),
-          parseFloat(upper[1]),
+        const coords = [
+          Number.parseFloat(lower[0]),
+          Number.parseFloat(lower[1]),
+          Number.parseFloat(upper[0]),
+          Number.parseFloat(upper[1]),
         ]
+        if (coords.every(Number.isFinite)) {
+          wgs84BoundingBox = coords as [number, number, number, number]
+        }
       }
     }
 

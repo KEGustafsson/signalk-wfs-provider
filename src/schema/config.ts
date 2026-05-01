@@ -36,7 +36,7 @@ export const configSchema = {
         type: 'object',
         required: ['id', 'url', 'layers', 'bboxStrategy'],
         properties: {
-          id: { type: 'string', minLength: 1 },
+          id: { type: 'string', minLength: 1, pattern: '^[^:]+$' },
           label: { type: 'string' },
           url: { type: 'string', format: 'uri' },
           version: { type: 'string', default: '2.0.0' },

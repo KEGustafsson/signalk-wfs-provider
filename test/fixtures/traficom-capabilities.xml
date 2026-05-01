@@ -4,7 +4,8 @@
   xmlns:wfs="http://www.opengis.net/wfs/2.0"
   xmlns:ows="http://www.opengis.net/ows/1.1"
   xmlns:gml="http://www.opengis.net/gml/3.2"
-  xmlns:fes="http://www.opengis.net/fes/2.0">
+  xmlns:fes="http://www.opengis.net/fes/2.0"
+  xmlns:xlink="http://www.w3.org/1999/xlink">
   <ows:ServiceIdentification>
     <ows:Title>Traficom WFS</ows:Title>
     <ows:ServiceType>WFS</ows:ServiceType>

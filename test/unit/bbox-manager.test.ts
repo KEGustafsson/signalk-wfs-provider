@@ -58,7 +58,7 @@ describe('BboxManager', () => {
 
     manager.onPosition({ latitude: 60, longitude: 25 }) // inside the bbox
     vi.advanceTimersByTime(60_000)
-    // The 30nm bbox around 60,25 is inside the padded [24,59,26,61], so no extra fetch.
+    expect(fetchCalls).toHaveLength(1) // containment check prevents a second fetch
   })
 
   it('getCurrentBbox returns bbox from last position when set', () => {

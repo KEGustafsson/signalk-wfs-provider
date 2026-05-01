@@ -24,10 +24,16 @@ module.exports = function (app: SignalKServerApp) {
     schema: configSchema,
 
     start(config: PluginConfig) {
+      if (plugin) {
+        plugin.stop()
+        plugin = null
+      }
       plugin = new Plugin(app as ConstructorParameters<typeof Plugin>[0], 'signalk-wfs-provider')
       plugin.start(config).catch((err: unknown) => {
         app.error(`Plugin start failed: ${String(err)}`)
         app.setPluginError?.(`Start failed: ${String(err)}`)
+        plugin?.stop()
+        plugin = null
       })
     },
 
