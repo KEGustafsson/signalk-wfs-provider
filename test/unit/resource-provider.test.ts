@@ -49,6 +49,22 @@ describe('ResourceProvider', () => {
     expect(await provider.getResource('unknown:layer')).toBeUndefined()
   })
 
+  it('getResource resolves namespaced typeName (provider:ns:layer)', async () => {
+    const cache = new Cache()
+    cache.set(makeLayer('traficom', 'inspire:depth_areas'))
+    const provider = new ResourceProvider(cache, 'wfs-features')
+
+    const result = await provider.getResource('traficom:inspire:depth_areas')
+    expect(result).toBeDefined()
+    expect(result!.type).toBe('FeatureCollection')
+  })
+
+  it('getResource returns undefined for id with no colon', async () => {
+    const cache = new Cache()
+    const provider = new ResourceProvider(cache, 'wfs-features')
+    expect(await provider.getResource('nocolon')).toBeUndefined()
+  })
+
   it('setResource throws 405', () => {
     const cache = new Cache()
     const provider = new ResourceProvider(cache, 'wfs-features')

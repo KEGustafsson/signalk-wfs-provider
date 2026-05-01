@@ -103,16 +103,23 @@ export class Plugin {
       }
     }
 
-    const initialBbox = provider.staticBbox ?? undefined
-    await fetchAll(initialBbox ?? undefined)
+    const initialBbox: Bbox | undefined =
+      provider.bboxStrategy === 'follow-vessel'
+        ? (provider.staticBbox ?? undefined)
+        : (provider.staticBbox ?? undefined)
+
+    if (provider.bboxStrategy !== 'follow-vessel' || initialBbox !== undefined) {
+      await fetchAll(initialBbox)
+    }
 
     const intervalMs = (provider.refreshIntervalSec ?? 3600) * 1000
     const timer = setInterval(async () => {
-      const bbox =
+      const bbox: Bbox | undefined =
         provider.bboxStrategy === 'follow-vessel'
-          ? this.bboxManagers.get(provider.id)?.getCurrentBbox() ?? provider.staticBbox ?? undefined
-          : provider.staticBbox ?? undefined
-      await fetchAll(bbox ?? undefined)
+          ? (this.bboxManagers.get(provider.id)?.getCurrentBbox() ?? provider.staticBbox ?? undefined)
+          : (provider.staticBbox ?? undefined)
+      if (provider.bboxStrategy === 'follow-vessel' && bbox === undefined) return
+      await fetchAll(bbox)
     }, intervalMs)
     this.refreshTimers.set(provider.id, timer)
 

@@ -21,7 +21,10 @@ export class ResourceProvider {
   }
 
   async getResource(id: string): Promise<GeoJSON.FeatureCollection | undefined> {
-    const [providerId, typeName] = id.split(':')
+    const colonIdx = id.indexOf(':')
+    if (colonIdx === -1) return undefined
+    const providerId = id.slice(0, colonIdx)
+    const typeName = id.slice(colonIdx + 1)
     if (!providerId || !typeName) return undefined
 
     const layer = this.cache.get(providerId, typeName)

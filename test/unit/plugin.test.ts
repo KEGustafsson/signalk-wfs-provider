@@ -29,6 +29,19 @@ const minimalConfig: PluginConfig = {
   cacheDir: tmpDir,
 }
 
+const followVesselConfig: PluginConfig = {
+  providers: [
+    {
+      id: 'test',
+      url: 'https://example.com/wfs',
+      layers: [{ typeName: 'depth_areas', enabled: true, maxFeatures: 100 }],
+      bboxStrategy: 'follow-vessel',
+      // no staticBbox — position not yet known
+    },
+  ],
+  cacheDir: tmpDir,
+}
+
 describe('Plugin', () => {
   beforeEach(() => {
     fs.mkdirSync(tmpDir, { recursive: true })
@@ -51,6 +64,29 @@ describe('Plugin', () => {
     expect(app.registerResourceProvider).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'wfs-features' }),
     )
+
+    plugin.stop()
+  })
+
+  it('does not fetch when follow-vessel and no position or staticBbox', async () => {
+    const app = makeApp()
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      text: async () => '',
+      headers: { get: () => null },
+    } as unknown as Response)
+    global.fetch = fetchMock
+
+    const plugin = new Plugin(app as Parameters<typeof Plugin>[0], 'signalk-wfs-provider')
+    await plugin.start(followVesselConfig)
+
+    // GetCapabilities is called (one fetch), but GetFeature must NOT be called
+    // because no position is available and staticBbox is absent
+    const getFeatureCalls = fetchMock.mock.calls.filter((args: string[]) =>
+      String(args[0]).includes('GetFeature'),
+    )
+    expect(getFeatureCalls).toHaveLength(0)
 
     plugin.stop()
   })
