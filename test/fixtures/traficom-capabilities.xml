@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wfs:WFS_Capabilities
+  version="2.0.0"
+  xmlns:wfs="http://www.opengis.net/wfs/2.0"
+  xmlns:ows="http://www.opengis.net/ows/1.1"
+  xmlns:gml="http://www.opengis.net/gml/3.2"
+  xmlns:fes="http://www.opengis.net/fes/2.0">
+  <ows:ServiceIdentification>
+    <ows:Title>Traficom WFS</ows:Title>
+    <ows:ServiceType>WFS</ows:ServiceType>
+    <ows:ServiceTypeVersion>2.0.0</ows:ServiceTypeVersion>
+  </ows:ServiceIdentification>
+  <ows:OperationsMetadata>
+    <ows:Operation name="GetCapabilities">
+      <ows:DCP><ows:HTTP><ows:Get xlink:href="https://julkinen.traficom.fi/inspirepalvelu/avoin/wfs"/></ows:HTTP></ows:DCP>
+    </ows:Operation>
+    <ows:Operation name="GetFeature">
+      <ows:DCP><ows:HTTP><ows:Get xlink:href="https://julkinen.traficom.fi/inspirepalvelu/avoin/wfs"/></ows:HTTP></ows:DCP>
+      <ows:Parameter name="outputFormat">
+        <ows:AllowedValues>
+          <ows:Value>application/json</ows:Value>
+          <ows:Value>text/xml; subtype=gml/3.2</ows:Value>
+        </ows:AllowedValues>
+      </ows:Parameter>
+    </ows:Operation>
+  </ows:OperationsMetadata>
+  <wfs:FeatureTypeList>
+    <wfs:FeatureType>
+      <wfs:Name>rajoitusalue_a</wfs:Name>
+      <wfs:Title>Restricted areas</wfs:Title>
+      <wfs:DefaultCRS>urn:ogc:def:crs:EPSG::3067</wfs:DefaultCRS>
+      <wfs:OtherCRS>urn:ogc:def:crs:EPSG::4326</wfs:OtherCRS>
+      <ows:WGS84BoundingBox>
+        <ows:LowerCorner>19.0 59.0</ows:LowerCorner>
+        <ows:UpperCorner>32.0 70.0</ows:UpperCorner>
+      </ows:WGS84BoundingBox>
+    </wfs:FeatureType>
+    <wfs:FeatureType>
+      <wfs:Name>syvyyskayra_v</wfs:Name>
+      <wfs:Title>Depth contours</wfs:Title>
+      <wfs:DefaultCRS>urn:ogc:def:crs:EPSG::3067</wfs:DefaultCRS>
+      <wfs:OtherCRS>urn:ogc:def:crs:EPSG::4326</wfs:OtherCRS>
+      <ows:WGS84BoundingBox>
+        <ows:LowerCorner>19.0 59.0</ows:LowerCorner>
+        <ows:UpperCorner>32.0 70.0</ows:UpperCorner>
+      </ows:WGS84BoundingBox>
+    </wfs:FeatureType>
+  </wfs:FeatureTypeList>
+</wfs:WFS_Capabilities>

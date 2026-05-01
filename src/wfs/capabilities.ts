@@ -70,8 +70,9 @@ export function parseCapabilities(xml: string): Capabilities {
     let wgs84BoundingBox: [number, number, number, number] | undefined
     const bb = ft['ows:WGS84BoundingBox'] ?? ft['WGS84BoundingBox']
     if (bb) {
-      const lower = String(bb['ows:LowerCorner'] ?? bb['LowerCorner'] ?? '').split(' ')
-      const upper = String(bb['ows:UpperCorner'] ?? bb['UpperCorner'] ?? '').split(' ')
+      const bbRec = bb as Record<string, unknown>
+      const lower = String(bbRec['ows:LowerCorner'] ?? bbRec['LowerCorner'] ?? '').split(' ')
+      const upper = String(bbRec['ows:UpperCorner'] ?? bbRec['UpperCorner'] ?? '').split(' ')
       if (lower.length === 2 && upper.length === 2) {
         wgs84BoundingBox = [
           parseFloat(lower[0]),
@@ -85,7 +86,8 @@ export function parseCapabilities(xml: string): Capabilities {
     const outputFormatsRaw = ft['OutputFormats'] ?? ft['wfs:OutputFormats']
     let outputFormats: string[] = globalOutputFormats
     if (outputFormatsRaw) {
-      const vals = toArray(outputFormatsRaw['OutputFormat'] ?? outputFormatsRaw['wfs:OutputFormat'])
+      const ofRec = outputFormatsRaw as Record<string, unknown>
+      const vals = toArray(ofRec['OutputFormat'] ?? ofRec['wfs:OutputFormat'])
       if (vals.length > 0) outputFormats = vals.map(String)
     }
 
