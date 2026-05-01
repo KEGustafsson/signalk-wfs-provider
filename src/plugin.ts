@@ -1,6 +1,7 @@
 import path from 'node:path'
 import os from 'node:os'
 import { WfsClient } from './wfs/client.js'
+import { supportsGeoJson } from './wfs/capabilities.js'
 import { Cache } from './cache/index.js'
 import { SqliteCache } from './cache/sqlite.js'
 import { ResourceProvider } from './resources/provider.js'
@@ -48,6 +49,7 @@ export class Plugin {
   ) {}
 
   async start(config: PluginConfig): Promise<void> {
+    this.stopped = false
     this.config = config
     const resourceType = config.resourceType ?? 'wfs-features'
 
@@ -93,14 +95,28 @@ export class Plugin {
     const client = new WfsClient(provider)
     this.clients.set(provider.id, client)
 
+    let enabledLayers = provider.layers.filter((l) => l.enabled)
+
     try {
       const capabilities = await client.getCapabilities()
       this.app.debug(`[${provider.id}] capabilities loaded: ${capabilities.layers.length} layers`)
+
+      const capMap = new Map(capabilities.layers.map((l) => [l.name, l]))
+      enabledLayers = enabledLayers.filter((layerCfg) => {
+        const capLayer = capMap.get(layerCfg.typeName)
+        if (!capLayer) {
+          this.app.error(`[${provider.id}:${layerCfg.typeName}] layer not found in capabilities — skipping`)
+          return false
+        }
+        if (!supportsGeoJson(capLayer)) {
+          this.app.error(`[${provider.id}:${layerCfg.typeName}] layer does not advertise GeoJSON output — skipping`)
+          return false
+        }
+        return true
+      })
     } catch (err) {
       this.app.error(`[${provider.id}] Failed to load capabilities: ${String(err)}`)
     }
-
-    const enabledLayers = provider.layers.filter((l) => l.enabled)
 
     let inFlight: Promise<void> | null = null
     const fetchAll = async (bbox?: Bbox) => {

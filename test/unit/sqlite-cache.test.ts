@@ -1,4 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest'
+import { DatabaseSync } from 'node:sqlite'
 import os from 'node:os'
 import path from 'node:path'
 import fs from 'node:fs'
@@ -105,8 +106,7 @@ describe('SqliteCache', () => {
     expect(db2.loadAll()).toHaveLength(1)
   })
 
-  it('loadAll skips rows with corrupt JSON and returns valid ones', async () => {
-    const { DatabaseSync } = await import('node:sqlite')
+  it('loadAll skips rows with corrupt JSON and returns valid ones', () => {
     const dir = tmpDir()
 
     // Write one valid and one corrupt row directly via raw SQL

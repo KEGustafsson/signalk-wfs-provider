@@ -8,71 +8,75 @@ function toArray<T>(val: T | T[] | undefined): T[] {
   return Array.isArray(val) ? val : [val]
 }
 
-export function parseCapabilities(xml: string): Capabilities {
-  const doc = parser.parse(xml)
+function localName(key: string): string {
+  const idx = key.indexOf(':')
+  return idx === -1 ? key : key.slice(idx + 1)
+}
 
-  const root =
-    doc['wfs:WFS_Capabilities'] ??
-    doc['WFS_Capabilities'] ??
-    doc['wfs20:WFS_Capabilities']
+function findByLocal(obj: Record<string, unknown>, local: string): unknown {
+  for (const key of Object.keys(obj)) {
+    if (localName(key) === local) return obj[key]
+  }
+  return undefined
+}
+
+export function parseCapabilities(xml: string): Capabilities {
+  const doc = parser.parse(xml) as Record<string, unknown>
+
+  const root = findByLocal(doc, 'WFS_Capabilities') as Record<string, unknown> | undefined
   if (!root) throw new Error('No WFS_Capabilities root element found')
 
-  const version: string =
-    root['@_version'] ?? root['wfs:@_version'] ?? ''
+  const versionKey = Object.keys(root).find((k) => k.endsWith('version') || k === '@_version')
+  const version: string = versionKey ? String(root[versionKey]) : ''
   if (!version.startsWith('2.0')) {
     throw new Error(`Unsupported WFS version: ${version}. Only 2.0.0 is supported.`)
   }
 
-  const opsMeta =
-    root['ows:OperationsMetadata'] ??
-    root['OperationsMetadata']
+  const opsMeta = findByLocal(root, 'OperationsMetadata') as Record<string, unknown> | undefined
   if (!opsMeta) throw new Error('Missing OperationsMetadata in capabilities')
 
-  const operations = toArray(opsMeta['ows:Operation'] ?? opsMeta['Operation'])
+  const operationsRaw = findByLocal(opsMeta, 'Operation')
+  const operations = toArray(operationsRaw as Record<string, unknown> | Record<string, unknown>[] | undefined)
   const getFeatureOp = operations.find(
     (op: Record<string, unknown>) => (op['@_name'] as string) === 'GetFeature',
   )
 
   let globalOutputFormats: string[] = []
   if (getFeatureOp) {
-    const params = toArray(getFeatureOp['ows:Parameter'] ?? getFeatureOp['Parameter'])
+    const paramsRaw = findByLocal(getFeatureOp as Record<string, unknown>, 'Parameter')
+    const params = toArray(paramsRaw as Record<string, unknown> | Record<string, unknown>[] | undefined)
     const ofParam = params.find(
       (p: Record<string, unknown>) => (p['@_name'] as string) === 'outputFormat',
     )
     if (ofParam) {
-      const allowed = ofParam['ows:AllowedValues'] ?? ofParam['AllowedValues']
+      const allowed = findByLocal(ofParam as Record<string, unknown>, 'AllowedValues') as Record<string, unknown> | undefined
       if (allowed) {
-        const values = toArray(allowed['ows:Value'] ?? allowed['Value'])
+        const valuesRaw = findByLocal(allowed, 'Value')
+        const values = toArray(valuesRaw as string | string[] | undefined)
         globalOutputFormats = values.map(String)
       }
     }
   }
 
-  const ftList =
-    root['wfs:FeatureTypeList'] ??
-    root['FeatureTypeList']
-  if (!ftList) throw new Error('Missing FeatureTypeList in capabilities')
+  const ftListRaw = findByLocal(root, 'FeatureTypeList') as Record<string, unknown> | undefined
+  if (!ftListRaw) throw new Error('Missing FeatureTypeList in capabilities')
 
-  const ftTypes = toArray(
-    ftList['wfs:FeatureType'] ?? ftList['FeatureType'],
-  )
+  const ftTypesRaw = findByLocal(ftListRaw, 'FeatureType')
+  const ftTypes = toArray(ftTypesRaw as Record<string, unknown> | Record<string, unknown>[] | undefined)
 
   const layers: CapabilityLayer[] = ftTypes.map((ft: Record<string, unknown>) => {
-    const name = String(ft['wfs:Name'] ?? ft['Name'] ?? '')
-    const title = String(ft['wfs:Title'] ?? ft['Title'] ?? name)
-    const defaultCRS = String(
-      ft['wfs:DefaultCRS'] ?? ft['DefaultCRS'] ?? ft['wfs:DefaultSRS'] ?? ft['DefaultSRS'] ?? '',
-    )
+    const name = String(findByLocal(ft, 'Name') ?? '')
+    const title = String(findByLocal(ft, 'Title') ?? name)
+    const defaultCRS = String(findByLocal(ft, 'DefaultCRS') ?? findByLocal(ft, 'DefaultSRS') ?? '')
 
-    const otherCRSRaw = ft['wfs:OtherCRS'] ?? ft['OtherCRS'] ?? ft['wfs:OtherSRS'] ?? ft['OtherSRS']
-    const otherCRS = toArray(otherCRSRaw).map(String)
+    const otherCRSRaw = findByLocal(ft, 'OtherCRS') ?? findByLocal(ft, 'OtherSRS')
+    const otherCRS = toArray(otherCRSRaw as string | string[] | undefined).map(String)
 
     let wgs84BoundingBox: [number, number, number, number] | undefined
-    const bb = ft['ows:WGS84BoundingBox'] ?? ft['WGS84BoundingBox']
+    const bb = findByLocal(ft, 'WGS84BoundingBox') as Record<string, unknown> | undefined
     if (bb) {
-      const bbRec = bb as Record<string, unknown>
-      const lower = String(bbRec['ows:LowerCorner'] ?? bbRec['LowerCorner'] ?? '').trim().split(/\s+/)
-      const upper = String(bbRec['ows:UpperCorner'] ?? bbRec['UpperCorner'] ?? '').trim().split(/\s+/)
+      const lower = String(findByLocal(bb, 'LowerCorner') ?? '').trim().split(/\s+/)
+      const upper = String(findByLocal(bb, 'UpperCorner') ?? '').trim().split(/\s+/)
       if (lower.length === 2 && upper.length === 2) {
         const coords = [
           Number.parseFloat(lower[0]),
@@ -86,11 +90,11 @@ export function parseCapabilities(xml: string): Capabilities {
       }
     }
 
-    const outputFormatsRaw = ft['OutputFormats'] ?? ft['wfs:OutputFormats']
+    const outputFormatsRaw = findByLocal(ft, 'OutputFormats') as Record<string, unknown> | undefined
     let outputFormats: string[] = globalOutputFormats
     if (outputFormatsRaw) {
-      const ofRec = outputFormatsRaw as Record<string, unknown>
-      const vals = toArray(ofRec['OutputFormat'] ?? ofRec['wfs:OutputFormat'])
+      const valsRaw = findByLocal(outputFormatsRaw, 'OutputFormat')
+      const vals = toArray(valsRaw as string | string[] | undefined)
       if (vals.length > 0) outputFormats = vals.map(String)
     }
 
