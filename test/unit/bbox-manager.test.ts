@@ -19,6 +19,7 @@ describe('BboxManager', () => {
   let manager: BboxManager
 
   beforeEach(() => {
+    vi.clearAllTimers()
     fetchCalls = []
     manager = new BboxManager(baseCfg, (bbox) => fetchCalls.push(bbox))
   })
@@ -57,11 +58,40 @@ describe('BboxManager', () => {
 
     manager.onPosition({ latitude: 60, longitude: 25 }) // inside the bbox
     vi.advanceTimersByTime(60_000)
-    // movement is less than minMoveDistanceNm from lastPosition (null initially)
-    // After triggerImmediateFetch sets lastFetchBbox, onPosition checks containment
-    // The 30nm bbox around 60,25 should be inside the padded [24,59,26,61]
-    // padded 20%: [23.6, 58.8, 26.4, 61.4], 30nm ~= 0.5deg lat, so bbox ~[24.5,59.5,25.5,60.5]
-    // That IS contained. So no fetch.
-    // But first onPosition call: lastPosition is null, so distance check skipped, goes to bbox check
+    // The 30nm bbox around 60,25 is inside the padded [24,59,26,61], so no extra fetch.
+  })
+
+  it('getCurrentBbox returns bbox from last position when set', () => {
+    manager.onPosition({ latitude: 60, longitude: 25 })
+    const bbox = manager.getCurrentBbox()
+    expect(bbox).not.toBeNull()
+    expect(bbox![0]).toBeLessThan(25)   // minLon
+    expect(bbox![2]).toBeGreaterThan(25) // maxLon
+  })
+
+  it('getCurrentBbox returns staticBbox when no position received', () => {
+    const cfg = { ...baseCfg, staticBbox: [20, 59, 30, 65] as [number, number, number, number] }
+    const m = new BboxManager(cfg, () => {})
+    expect(m.getCurrentBbox()).toEqual([20, 59, 30, 65])
+  })
+
+  it('getCurrentBbox returns null when no position and no staticBbox', () => {
+    expect(manager.getCurrentBbox()).toBeNull()
+  })
+
+  it('destroy cancels pending debounce timer', () => {
+    manager.onPosition({ latitude: 60, longitude: 25 })
+    // timer pending — destroy before it fires
+    manager.destroy()
+    vi.advanceTimersByTime(60_000)
+    expect(fetchCalls).toHaveLength(0)
+  })
+
+  it('triggerImmediateFetch cancels pending debounce and fires immediately', () => {
+    manager.onPosition({ latitude: 60, longitude: 25 }) // schedules debounce
+    manager.triggerImmediateFetch([19, 59, 32, 70])     // cancels it, fires now
+    vi.advanceTimersByTime(60_000)
+    expect(fetchCalls).toHaveLength(1) // only the immediate one
+    expect(fetchCalls[0]).toEqual([19, 59, 32, 70])
   })
 })

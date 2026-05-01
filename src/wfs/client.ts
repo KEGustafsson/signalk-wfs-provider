@@ -1,4 +1,3 @@
-import { fetch } from 'undici'
 import { XMLParser } from 'fast-xml-parser'
 import { parseCapabilities } from './capabilities.js'
 import type { Capabilities, GetFeatureOptions, GetFeatureResult } from './types.js'

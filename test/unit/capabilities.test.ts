@@ -36,6 +36,56 @@ describe('parseCapabilities', () => {
     expect(() => parseCapabilities(xml)).toThrow('Unsupported WFS version')
   })
 
+  it('uses per-layer OutputFormats when present', () => {
+    const xml = `<?xml version="1.0"?>
+      <wfs:WFS_Capabilities version="2.0.0"
+        xmlns:wfs="http://www.opengis.net/wfs/2.0"
+        xmlns:ows="http://www.opengis.net/ows/1.1">
+        <ows:OperationsMetadata>
+          <ows:Operation name="GetFeature">
+            <ows:Parameter name="outputFormat">
+              <ows:AllowedValues><ows:Value>text/xml</ows:Value></ows:AllowedValues>
+            </ows:Parameter>
+          </ows:Operation>
+        </ows:OperationsMetadata>
+        <wfs:FeatureTypeList>
+          <wfs:FeatureType>
+            <wfs:Name>layer_a</wfs:Name>
+            <wfs:Title>Layer A</wfs:Title>
+            <wfs:DefaultCRS>urn:ogc:def:crs:EPSG::4326</wfs:DefaultCRS>
+            <OutputFormats>
+              <OutputFormat>application/json</OutputFormat>
+            </OutputFormats>
+          </wfs:FeatureType>
+        </wfs:FeatureTypeList>
+      </wfs:WFS_Capabilities>`
+    const caps = parseCapabilities(xml)
+    // Per-layer formats override the global ones
+    expect(caps.layers[0].outputFormats).toContain('application/json')
+  })
+
+  it('parses layer with no OtherCRS and no wgs84BoundingBox', () => {
+    const xml = `<?xml version="1.0"?>
+      <wfs:WFS_Capabilities version="2.0.0"
+        xmlns:wfs="http://www.opengis.net/wfs/2.0"
+        xmlns:ows="http://www.opengis.net/ows/1.1">
+        <ows:OperationsMetadata>
+          <ows:Operation name="GetCapabilities"/>
+        </ows:OperationsMetadata>
+        <wfs:FeatureTypeList>
+          <wfs:FeatureType>
+            <wfs:Name>layer_a</wfs:Name>
+            <wfs:Title>Layer A</wfs:Title>
+            <wfs:DefaultCRS>urn:ogc:def:crs:EPSG::4326</wfs:DefaultCRS>
+          </wfs:FeatureType>
+        </wfs:FeatureTypeList>
+      </wfs:WFS_Capabilities>`
+    const caps = parseCapabilities(xml)
+    expect(caps.layers[0].name).toBe('layer_a')
+    expect(caps.layers[0].otherCRS).toEqual([])
+    expect(caps.layers[0].wgs84BoundingBox).toBeUndefined()
+  })
+
   it('throws on missing OperationsMetadata', () => {
     const xml = `<?xml version="1.0"?>
       <wfs:WFS_Capabilities version="2.0.0"
