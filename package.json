@@ -2,7 +2,9 @@
   "name": "signalk-wfs-provider",
   "version": "0.1.0",
   "description": "Signal K plugin that consumes OGC WFS endpoints and exposes features via Resources API",
-  "keywords": ["signalk-node-server-plugin"],
+  "keywords": [
+    "signalk-node-server-plugin"
+  ],
   "license": "MIT",
   "author": "KEGustafsson",
   "main": "dist/index.js",
@@ -29,6 +31,7 @@
     "msw": "^2.7.0",
     "prettier": "^3.5.3",
     "typescript": "^5.8.3",
+    "typescript-eslint": "^8.59.1",
     "vitest": "^3.1.1"
   },
   "peerDependencies": {

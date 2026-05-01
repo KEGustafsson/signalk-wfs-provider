@@ -4,7 +4,6 @@ import {
   bboxFromCenter,
   bboxContains,
   expandBbox,
-  nmToDegreesLat,
 } from '../../src/bbox/geometry.js'
 
 describe('distanceNm', () => {
