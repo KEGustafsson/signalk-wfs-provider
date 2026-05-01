@@ -105,8 +105,8 @@ describe('SqliteCache', () => {
     expect(db2.loadAll()).toHaveLength(1)
   })
 
-  it('loadAll skips rows with corrupt JSON and returns valid ones', () => {
-    const { DatabaseSync } = require('node:sqlite') as typeof import('node:sqlite')
+  it('loadAll skips rows with corrupt JSON and returns valid ones', async () => {
+    const { DatabaseSync } = await import('node:sqlite')
     const dir = tmpDir()
 
     // Write one valid and one corrupt row directly via raw SQL
