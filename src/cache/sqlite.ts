@@ -56,15 +56,30 @@ export class SqliteCache {
       geojson_blob: string
     }>
 
-    return rows.map((row) => ({
-      providerId: row.provider_id,
-      typeName: row.type_name,
-      fetchedAt: new Date(row.fetched_at),
-      bbox: JSON.parse(row.bbox_json) as Bbox,
-      etag: row.etag ?? undefined,
-      lastModified: row.last_modified ?? undefined,
-      featureCollection: JSON.parse(row.geojson_blob) as GeoJSON.FeatureCollection,
-    }))
+    const layers: CachedLayer[] = []
+    for (const row of rows) {
+      try {
+        const bbox = JSON.parse(row.bbox_json) as Bbox
+        const featureCollection = JSON.parse(row.geojson_blob) as GeoJSON.FeatureCollection
+        if (
+          !Array.isArray(bbox) || bbox.length !== 4 ||
+          featureCollection?.type !== 'FeatureCollection' ||
+          !Array.isArray(featureCollection.features)
+        ) continue
+        layers.push({
+          providerId: row.provider_id,
+          typeName: row.type_name,
+          fetchedAt: new Date(row.fetched_at),
+          bbox,
+          etag: row.etag ?? undefined,
+          lastModified: row.last_modified ?? undefined,
+          featureCollection,
+        })
+      } catch {
+        // skip corrupted row
+      }
+    }
+    return layers
   }
 
   close(): void {

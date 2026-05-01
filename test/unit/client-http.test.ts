@@ -140,4 +140,17 @@ describe('WfsClient.getFeature', () => {
     expect(url).toContain('startIndex=100')
     expect(url).toContain('filter=CQL_FILTER')
   })
+
+  it('throws WfsServerError when response is not a FeatureCollection', async () => {
+    setFetch(mockFetch({ json: { type: 'Feature', geometry: null, properties: {} } }))
+
+    const client = new WfsClient(baseCfg)
+    await expect(client.getFeature({ typeName: 'test_layer' })).rejects.toThrow(WfsServerError)
+  })
+
+  it('throws on non-http(s) URL', async () => {
+    const client = new WfsClient({ ...baseCfg, url: 'file:///etc/passwd' })
+    await expect(client.getCapabilities()).rejects.toThrow('Unsupported URL protocol')
+    await expect(client.getFeature({ typeName: 'x' })).rejects.toThrow('Unsupported URL protocol')
+  })
 })

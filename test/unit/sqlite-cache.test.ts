@@ -104,4 +104,38 @@ describe('SqliteCache', () => {
     const db2 = open(dir)
     expect(db2.loadAll()).toHaveLength(1)
   })
+
+  it('loadAll skips rows with corrupt JSON and returns valid ones', () => {
+    const { DatabaseSync } = require('node:sqlite') as typeof import('node:sqlite')
+    const dir = tmpDir()
+
+    // Write one valid and one corrupt row directly via raw SQL
+    const rawDb = new DatabaseSync(`${dir}/wfs-cache.db`)
+    rawDb.exec(`
+      CREATE TABLE IF NOT EXISTS layers (
+        provider_id TEXT NOT NULL,
+        type_name TEXT NOT NULL,
+        fetched_at TEXT NOT NULL,
+        bbox_json TEXT NOT NULL,
+        etag TEXT,
+        last_modified TEXT,
+        geojson_blob TEXT NOT NULL,
+        PRIMARY KEY (provider_id, type_name)
+      )
+    `)
+    const good = makeLayer({ typeName: 'good' })
+    rawDb.prepare('INSERT INTO layers VALUES (?,?,?,?,?,?,?)').run(
+      good.providerId, good.typeName, good.fetchedAt.toISOString(),
+      JSON.stringify(good.bbox), null, null, JSON.stringify(good.featureCollection),
+    )
+    rawDb.prepare('INSERT INTO layers VALUES (?,?,?,?,?,?,?)').run(
+      'p', 'bad', new Date().toISOString(), '{CORRUPT', null, null, '{CORRUPT',
+    )
+    rawDb.close()
+
+    const db = open(dir)
+    const loaded = db.loadAll()
+    expect(loaded).toHaveLength(1)
+    expect(loaded[0].typeName).toBe('good')
+  })
 })

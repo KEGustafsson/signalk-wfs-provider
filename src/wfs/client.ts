@@ -8,11 +8,19 @@ const xmlParser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: 
 
 const REQUEST_TIMEOUT_MS = 30_000
 
+function buildUrl(base: string): URL {
+  const url = new URL(base)
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    throw new Error(`Unsupported URL protocol: ${url.protocol} (only http/https allowed)`)
+  }
+  return url
+}
+
 export class WfsClient {
   constructor(private readonly cfg: ProviderConfig) {}
 
   async getCapabilities(): Promise<Capabilities> {
-    const url = new URL(this.cfg.url)
+    const url = buildUrl(this.cfg.url)
     url.searchParams.set('service', 'WFS')
     url.searchParams.set('version', this.cfg.version ?? '2.0.0')
     url.searchParams.set('request', 'GetCapabilities')
@@ -31,7 +39,7 @@ export class WfsClient {
   }
 
   buildGetFeatureUrl(opts: GetFeatureOptions): string {
-    const url = new URL(this.cfg.url)
+    const url = buildUrl(this.cfg.url)
     url.searchParams.set('service', 'WFS')
     url.searchParams.set('version', this.cfg.version ?? '2.0.0')
     url.searchParams.set('request', 'GetFeature')
@@ -89,7 +97,15 @@ export class WfsClient {
       throw new WfsServerError('UNEXPECTED_CONTENT_TYPE', `Expected JSON, got: ${contentType}`)
     }
 
-    const featureCollection = (await res.json()) as GeoJSON.FeatureCollection
+    const parsed = (await res.json()) as unknown
+    const fc = parsed as { type?: unknown; features?: unknown }
+    if (fc?.type !== 'FeatureCollection' || !Array.isArray(fc.features)) {
+      throw new WfsServerError(
+        'INVALID_GEOJSON',
+        'Response is not a valid GeoJSON FeatureCollection',
+      )
+    }
+    const featureCollection = parsed as GeoJSON.FeatureCollection
     const etag = res.headers.get('etag') ?? undefined
     const lastModified = res.headers.get('last-modified') ?? undefined
 

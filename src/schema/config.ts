@@ -59,9 +59,14 @@ export const configSchema = {
             oneOf: [
               {
                 type: 'array',
-                items: { type: 'number' },
                 minItems: 4,
                 maxItems: 4,
+                items: [
+                  { type: 'number', minimum: -180, maximum: 180 },
+                  { type: 'number', minimum: -90, maximum: 90 },
+                  { type: 'number', minimum: -180, maximum: 180 },
+                  { type: 'number', minimum: -90, maximum: 90 },
+                ],
               },
               { type: 'null' },
             ],

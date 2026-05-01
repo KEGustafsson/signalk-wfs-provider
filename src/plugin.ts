@@ -40,6 +40,7 @@ export class Plugin {
   private refreshTimers = new Map<string, ReturnType<typeof setInterval>>()
   private positionSubscription: { unsubscribe: () => void } | null = null
   private config: PluginConfig | null = null
+  private stopped = false
 
   constructor(
     private readonly app: SignalKApp,
@@ -57,10 +58,14 @@ export class Plugin {
           'wfs-cache',
         )
 
-    this.sqliteCache = new SqliteCache(cacheDir)
-
-    for (const layer of this.sqliteCache.loadAll()) {
-      this.cache.set(layer)
+    try {
+      this.sqliteCache = new SqliteCache(cacheDir)
+      for (const layer of this.sqliteCache.loadAll()) {
+        this.cache.set(layer)
+      }
+    } catch (err) {
+      this.app.error(`SQLite cache unavailable, continuing in-memory only: ${String(err)}`)
+      this.sqliteCache = null
     }
 
     this.resourceProvider = new ResourceProvider(this.cache, resourceType)
@@ -99,9 +104,10 @@ export class Plugin {
 
     let inFlight: Promise<void> | null = null
     const fetchAll = async (bbox?: Bbox) => {
-      if (inFlight) return
+      if (this.stopped || inFlight) return
       inFlight = (async () => {
         for (const layerCfg of enabledLayers) {
+          if (this.stopped) return
           await this.fetchLayer(client, provider, layerCfg.typeName, layerCfg.maxFeatures, bbox)
         }
       })()
@@ -112,10 +118,7 @@ export class Plugin {
       }
     }
 
-    const initialBbox: Bbox | undefined =
-      provider.bboxStrategy === 'follow-vessel'
-        ? (provider.staticBbox ?? undefined)
-        : (provider.staticBbox ?? undefined)
+    const initialBbox: Bbox | undefined = provider.staticBbox ?? undefined
 
     if (provider.bboxStrategy !== 'follow-vessel' || initialBbox !== undefined) {
       await fetchAll(initialBbox)
@@ -123,6 +126,7 @@ export class Plugin {
 
     const intervalMs = (provider.refreshIntervalSec ?? 3600) * 1000
     const timer = setInterval(async () => {
+      if (this.stopped) return
       const bbox: Bbox | undefined =
         provider.bboxStrategy === 'follow-vessel'
           ? (this.bboxManagers.get(provider.id)?.getCurrentBbox() ?? provider.staticBbox ?? undefined)
@@ -189,12 +193,16 @@ export class Plugin {
       }
 
       if (result.featureCollection) {
+        const responseBbox = (result.featureCollection as { bbox?: unknown }).bbox
+        const responseBboxValid =
+          Array.isArray(responseBbox) && responseBbox.length === 4 &&
+          responseBbox.every((n) => typeof n === 'number' && Number.isFinite(n))
         const layer = {
           providerId: provider.id,
           typeName,
           featureCollection: result.featureCollection,
           fetchedAt: new Date(),
-          bbox: bbox ?? ([-180, -90, 180, 90] as Bbox),
+          bbox: bbox ?? (responseBboxValid ? (responseBbox as Bbox) : ([-180, -90, 180, 90] as Bbox)),
           etag: result.etag,
           lastModified: result.lastModified,
         }
@@ -230,6 +238,7 @@ export class Plugin {
   }
 
   stop(): void {
+    this.stopped = true
     for (const timer of this.refreshTimers.values()) clearInterval(timer)
     this.refreshTimers.clear()
     for (const mgr of this.bboxManagers.values()) mgr.destroy()
