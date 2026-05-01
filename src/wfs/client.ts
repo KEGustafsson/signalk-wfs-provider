@@ -6,6 +6,8 @@ import type { ProviderConfig } from '../schema/config.js'
 
 const xmlParser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '@_' })
 
+const REQUEST_TIMEOUT_MS = 30_000
+
 export class WfsClient {
   constructor(private readonly cfg: ProviderConfig) {}
 
@@ -17,6 +19,7 @@ export class WfsClient {
 
     const res = await fetch(url.toString(), {
       headers: { ...this.cfg.headers },
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     })
 
     if (!res.ok) {
@@ -67,7 +70,7 @@ export class WfsClient {
     if (opts.ifNoneMatch) reqHeaders['If-None-Match'] = opts.ifNoneMatch
     if (opts.ifModifiedSince) reqHeaders['If-Modified-Since'] = opts.ifModifiedSince
 
-    const res = await fetch(url, { headers: reqHeaders })
+    const res = await fetch(url, { headers: reqHeaders, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) })
 
     if (res.status === 304) {
       return { notModified: true }

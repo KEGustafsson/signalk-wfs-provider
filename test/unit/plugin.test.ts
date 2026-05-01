@@ -83,11 +83,13 @@ function makeFetch(responses: Array<{ ok: boolean; status: number; body: string;
 
 describe('Plugin', () => {
   beforeEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true })
     fs.mkdirSync(tmpDir, { recursive: true })
   })
 
   afterEach(() => {
     vi.restoreAllMocks()
+    fs.rmSync(tmpDir, { recursive: true, force: true })
   })
 
   it('registers resource provider on start', async () => {
@@ -113,20 +115,18 @@ describe('Plugin', () => {
 
   it('does not fetch when follow-vessel and no position or staticBbox', async () => {
     const app = makeApp()
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 503,
-      text: async () => '',
-      headers: { get: () => null },
-    } as unknown as Response)
+    // Capabilities succeeds so the plugin fully initialises — the bbox guard
+    // (not a capabilities failure) is what must prevent GetFeature calls.
+    const fetchMock = makeFetch([
+      { ok: true, status: 200, body: capabilitiesXml, contentType: 'text/xml' },
+    ])
     global.fetch = fetchMock
 
     const plugin = new Plugin(app as Parameters<typeof Plugin>[0], 'signalk-wfs-provider')
     await plugin.start(followVesselConfig)
 
-    // GetCapabilities is called (one fetch), but GetFeature must NOT be called
-    // because no position is available and staticBbox is absent
-    const getFeatureCalls = fetchMock.mock.calls.filter((args: string[]) =>
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const getFeatureCalls = fetchMock.mock.calls.filter((args: unknown[]) =>
       String(args[0]).includes('GetFeature'),
     )
     expect(getFeatureCalls).toHaveLength(0)

@@ -5,12 +5,6 @@ import fs from 'node:fs'
 import { SqliteCache } from '../../src/cache/sqlite.js'
 import type { CachedLayer } from '../../src/cache/index.js'
 
-const tmpDir = () => {
-  const d = path.join(os.tmpdir(), `wfs-sqlite-test-${Date.now()}-${Math.random().toString(36).slice(2)}`)
-  fs.mkdirSync(d, { recursive: true })
-  return d
-}
-
 const makeLayer = (overrides: Partial<CachedLayer> = {}): CachedLayer => ({
   providerId: 'traficom',
   typeName: 'rajoitusalue_a',
@@ -28,10 +22,20 @@ const makeLayer = (overrides: Partial<CachedLayer> = {}): CachedLayer => ({
 })
 
 let dbs: SqliteCache[] = []
+let dirs: string[] = []
+
+const tmpDir = () => {
+  const d = path.join(os.tmpdir(), `wfs-sqlite-test-${Date.now()}-${Math.random().toString(36).slice(2)}`)
+  fs.mkdirSync(d, { recursive: true })
+  dirs.push(d)
+  return d
+}
 
 afterEach(() => {
   for (const db of dbs) db.close()
   dbs = []
+  for (const dir of dirs) fs.rmSync(dir, { recursive: true, force: true })
+  dirs = []
 })
 
 function open(dir?: string): SqliteCache {
