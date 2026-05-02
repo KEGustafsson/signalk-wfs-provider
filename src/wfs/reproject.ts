@@ -21,9 +21,12 @@ export function normalizeSrs(srs: string): string {
   // urn:ogc:def:crs:EPSG::3067  or  urn:ogc:def:crs:EPSG:6.6:3067
   const urnMatch = srs.match(/urn:ogc:def:crs:EPSG:[^:]*:(\d+)/i)
   if (urnMatch) return `EPSG:${urnMatch[1]}`
-  // http://www.opengis.net/gml/srs/epsg.xml#3067
-  const httpMatch = srs.match(/epsg\.xml#(\d+)/i)
-  if (httpMatch) return `EPSG:${httpMatch[1]}`
+  // http://www.opengis.net/def/crs/EPSG/0/3067  (WFS 2.0 HTTP URI format)
+  const ogcHttpMatch = srs.match(/\/def\/crs\/EPSG\/[^/]*\/(\d+)/i)
+  if (ogcHttpMatch) return `EPSG:${ogcHttpMatch[1]}`
+  // http://www.opengis.net/gml/srs/epsg.xml#3067  (legacy GML format)
+  const gmlMatch = srs.match(/epsg\.xml#(\d+)/i)
+  if (gmlMatch) return `EPSG:${gmlMatch[1]}`
   return srs
 }
 
@@ -69,8 +72,10 @@ export function reprojectToWgs84(
   if (isWgs84(from)) return fc
   requireKnown(from)
   const convert = (xy: number[]): number[] => proj4(from, 'WGS84', xy)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { bbox: _projectedBbox, ...rest } = fc as GeoJSON.FeatureCollection & { bbox?: unknown }
   return {
-    ...fc,
+    ...rest,
     features: fc.features.map((f) => ({
       ...f,
       geometry: f.geometry ? reprojectGeometry(f.geometry, convert) : f.geometry,

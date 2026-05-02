@@ -12,8 +12,13 @@ describe('normalizeSrs', () => {
     expect(normalizeSrs('urn:ogc:def:crs:EPSG:6.6:4326')).toBe('EPSG:4326')
   })
 
-  it('normalizes OGC HTTP URL format', () => {
+  it('normalizes OGC HTTP URL format (legacy GML)', () => {
     expect(normalizeSrs('http://www.opengis.net/gml/srs/epsg.xml#3067')).toBe('EPSG:3067')
+  })
+
+  it('normalizes WFS 2.0 HTTP URI format', () => {
+    expect(normalizeSrs('http://www.opengis.net/def/crs/EPSG/0/3067')).toBe('EPSG:3067')
+    expect(normalizeSrs('http://www.opengis.net/def/crs/EPSG/0/4326')).toBe('EPSG:4326')
   })
 })
 
@@ -106,6 +111,20 @@ describe('reprojectToWgs84', () => {
       expect(lat).toBeGreaterThan(59)
       expect(lat).toBeLessThan(65)
     }
+  })
+
+  it('strips top-level bbox from reprojected FeatureCollection', () => {
+    const fc = {
+      type: 'FeatureCollection' as const,
+      bbox: [385_000, 6_672_000, 386_000, 6_673_000] as [number, number, number, number],
+      features: [{
+        type: 'Feature' as const,
+        geometry: { type: 'Point' as const, coordinates: [385_000, 6_672_000] },
+        properties: {},
+      }],
+    }
+    const result = reprojectToWgs84(fc, 'EPSG:3067') as Record<string, unknown>
+    expect(result.bbox).toBeUndefined()
   })
 
   it('passes through null geometry without error', () => {
