@@ -126,13 +126,15 @@ describe.skipIf(!LIVE)('Plugin end-to-end — live Traficom WFS → Signal K', {
     const seaAreaKeys = Object.keys(resources).filter((k) => k.startsWith('traficom:avoin:TerritorialSeaArea_A:'))
     expect(seaAreaKeys.length).toBeGreaterThan(0)
 
-    // Metadata shape for first feature
+    // Signal K region shape: { name, feature: GeoJSON.Feature, $source, timestamp }
     const meta = resources[seaAreaKeys[0]] as Record<string, unknown>
     expect(meta.$source).toBe('wfs-provider:traficom')
     expect(typeof meta.timestamp).toBe('string')
     expect(new Date(meta.timestamp as string).getTime()).toBeGreaterThan(0)
     expect(typeof meta.name).toBe('string')
-    expect(typeof meta.description).toBe('string')
+    const feat = meta.feature as Record<string, unknown>
+    expect(feat.type).toBe('Feature')
+    expect(feat.geometry).toBeDefined()
 
     plugin.stop()
   })
@@ -144,15 +146,16 @@ describe.skipIf(!LIVE)('Plugin end-to-end — live Traficom WFS → Signal K', {
 
     await plugin.start(makeConfig(cacheDir))
 
-    const feature = await app.methods.getResource('traficom:avoin:TerritorialSeaArea_A:0', {}) as GeoJSON.Feature & Record<string, unknown>
+    const region = await app.methods.getResource('traficom:avoin:TerritorialSeaArea_A:0', {}) as Record<string, unknown>
 
-    expect(feature).toBeDefined()
+    expect(region).toBeDefined()
+    // Signal K metadata extensions must be present
+    expect(region.$source).toBe('wfs-provider:traficom')
+    expect(typeof region.timestamp).toBe('string')
+    // GeoJSON Feature nested under 'feature'
+    const feature = region.feature as GeoJSON.Feature
     expect(feature.type).toBe('Feature')
     expect(feature.geometry).toBeDefined()
-
-    // Signal K metadata extensions must be present
-    expect(feature.$source).toBe('wfs-provider:traficom')
-    expect(typeof feature.timestamp).toBe('string')
 
     console.log(
       `  TerritorialSeaArea_A:0 geometry type: ${feature.geometry?.type}`,
@@ -221,8 +224,8 @@ describe.skipIf(!LIVE)('Plugin end-to-end — live Traficom WFS → Signal K', {
       ).length
       expect(offlineSeaAreaCount).toBe(liveSeaAreaCount)
 
-      const offlineFeature = await app2.methods.getResource('traficom:avoin:TerritorialSeaArea_A:0', {}) as GeoJSON.Feature
-      expect(offlineFeature.type).toBe('Feature')
+      const offlineRegion = await app2.methods.getResource('traficom:avoin:TerritorialSeaArea_A:0', {}) as Record<string, unknown>
+      expect((offlineRegion.feature as GeoJSON.Feature).type).toBe('Feature')
 
       console.log(`  Run 2 (offline): ${offlineSeaAreaCount} features served from SQLite cache ✓`)
 

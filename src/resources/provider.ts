@@ -1,5 +1,15 @@
 import type { Cache } from '../cache/index.js'
 
+// Signal K region resource shape expected by consumers (e.g. Freeboard-SK alarms plugin):
+// { name, description, feature: GeoJSON.Feature, $source, timestamp }
+interface SkRegion {
+  name: string
+  description?: string
+  feature: GeoJSON.Feature
+  $source: string
+  timestamp: string
+}
+
 export class ResourceProvider {
   constructor(
     private readonly cache: Cache,
@@ -11,17 +21,13 @@ export class ResourceProvider {
     for (const layer of this.cache.getAll()) {
       layer.featureCollection.features.forEach((feature, index) => {
         const id = `${layer.providerId}:${layer.typeName}:${index}`
-        result[id] = {
-          ...feature,
-          $source: `wfs-provider:${layer.providerId}`,
-          timestamp: layer.fetchedAt.toISOString(),
-        }
+        result[id] = this.toSkRegion(feature, layer.providerId, layer.fetchedAt)
       })
     }
     return result
   }
 
-  async getResource(id: string): Promise<GeoJSON.Feature | undefined> {
+  async getResource(id: string): Promise<SkRegion | undefined> {
     // ID format: <providerId>:<typeName>:<featureIndex>
     // providerId has no colons (schema enforced); index is after the last colon;
     // typeName is everything in between.
@@ -42,11 +48,19 @@ export class ResourceProvider {
     const feature = layer.featureCollection.features[index]
     if (!feature) return undefined
 
+    return this.toSkRegion(feature, layer.providerId, layer.fetchedAt)
+  }
+
+  private toSkRegion(feature: GeoJSON.Feature, providerId: string, fetchedAt: Date): SkRegion {
+    const props = feature.properties ?? {}
+    const description =
+      (props['description'] as string | undefined) ?? (props['kuvaus'] as string | undefined)
     return {
-      ...feature,
-      // @ts-expect-error Signal K resource metadata extensions
-      $source: `wfs-provider:${layer.providerId}`,
-      timestamp: layer.fetchedAt.toISOString(),
+      name: (props['name'] as string | undefined) ?? (props['nimi'] as string | undefined) ?? '',
+      ...(description !== undefined && { description }),
+      feature,
+      $source: `wfs-provider:${providerId}`,
+      timestamp: fetchedAt.toISOString(),
     }
   }
 
