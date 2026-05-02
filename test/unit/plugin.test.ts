@@ -107,7 +107,7 @@ describe('Plugin', () => {
     await plugin.start(minimalConfig)
 
     expect(app.registerResourceProvider).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'wfs-features' }),
+      expect.objectContaining({ type: 'regions' }),
     )
 
     plugin.stop()

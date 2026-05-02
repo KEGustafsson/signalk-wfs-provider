@@ -51,7 +51,7 @@ export class Plugin {
   async start(config: PluginConfig): Promise<void> {
     this.stopped = false
     this.config = config
-    const resourceType = config.resourceType ?? 'wfs-features'
+    const resourceType = config.resourceType ?? 'regions'
 
     const cacheDir = config.cacheDir
       ? config.cacheDir.replace('~', os.homedir())

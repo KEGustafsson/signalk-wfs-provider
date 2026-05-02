@@ -82,6 +82,6 @@ export const configSchema = {
       },
     },
     cacheDir: { type: 'string' },
-    resourceType: { type: 'string', default: 'wfs-features' },
+    resourceType: { type: 'string', default: 'regions' },
   },
 }
