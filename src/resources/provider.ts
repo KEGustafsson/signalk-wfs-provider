@@ -21,7 +21,7 @@ export class ResourceProvider {
     for (const layer of this.cache.getAll()) {
       layer.featureCollection.features.forEach((feature, index) => {
         const id = `${layer.providerId}:${layer.typeName}:${index}`
-        result[id] = this.toSkRegion(feature, layer.providerId, layer.fetchedAt)
+        result[id] = this.toSkRegion(feature, layer.providerId, layer.typeName, index, layer.fetchedAt)
       })
     }
     return result
@@ -48,15 +48,24 @@ export class ResourceProvider {
     const feature = layer.featureCollection.features[index]
     if (!feature) return undefined
 
-    return this.toSkRegion(feature, layer.providerId, layer.fetchedAt)
+    return this.toSkRegion(feature, layer.providerId, typeName, index, layer.fetchedAt)
   }
 
-  private toSkRegion(feature: GeoJSON.Feature, providerId: string, fetchedAt: Date): SkRegion {
+  private toSkRegion(
+    feature: GeoJSON.Feature,
+    providerId: string,
+    typeName: string,
+    index: number,
+    fetchedAt: Date,
+  ): SkRegion {
     const props = feature.properties ?? {}
     const description =
       (props['description'] as string | undefined) ?? (props['kuvaus'] as string | undefined)
     return {
-      name: (props['name'] as string | undefined) ?? (props['nimi'] as string | undefined) ?? '',
+      name:
+        (props['name'] as string | undefined) ??
+        (props['nimi'] as string | undefined) ??
+        `${typeName}:${index}`,
       ...(description !== undefined && { description }),
       feature,
       $source: `wfs-provider:${providerId}`,

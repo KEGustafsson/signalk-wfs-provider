@@ -69,24 +69,24 @@ describe('ResourceProvider', () => {
     expect(entry.description).toBe('Alue kuvaus')
   })
 
-  it('listResources omits description when no description property', async () => {
+  it('listResources omits description key when no description property', async () => {
     const cache = new Cache()
-    cache.set(makeLayer('p', 'layer', [makeFeature()]))
+    cache.set(makeLayer('p', 'layer', [makeFeature({ name: 'X' })]))
     const provider = new ResourceProvider(cache, 'regions')
 
     const result = await provider.listResources()
     const entry = result['p:layer:0'] as Record<string, unknown>
-    expect(entry.description).toBeUndefined()
+    expect('description' in entry).toBe(false)
   })
 
-  it('listResources falls back to empty string name when no name property', async () => {
+  it('listResources falls back to typeName:index when no name property', async () => {
     const cache = new Cache()
     cache.set(makeLayer('p', 'layer', [makeFeature()]))
     const provider = new ResourceProvider(cache, 'regions')
 
     const result = await provider.listResources()
     const entry = result['p:layer:0'] as Record<string, unknown>
-    expect(entry.name).toBe('')
+    expect(entry.name).toBe('layer:0')
   })
 
   it('listResources uses nimi as Finnish name fallback', async () => {
@@ -104,6 +104,16 @@ describe('ResourceProvider', () => {
     cache.set(makeLayer('p', 'empty_layer', []))
     const provider = new ResourceProvider(cache, 'regions')
     expect(await provider.listResources()).toEqual({})
+  })
+
+  it('getResource falls back to typeName:index when no name property', async () => {
+    const cache = new Cache()
+    cache.set(makeLayer('p', 'layer', [makeFeature()]))
+    const provider = new ResourceProvider(cache, 'regions')
+
+    const result = await provider.getResource('p:layer:0')
+    expect(result).toBeDefined()
+    expect(result!.name).toBe('layer:0')
   })
 
   it('getResource returns a Signal K region with nested GeoJSON feature', async () => {
