@@ -106,6 +106,16 @@ describe('ResourceProvider', () => {
     expect(await provider.listResources()).toEqual({})
   })
 
+  it('getResource falls back to typeName:index when no name property', async () => {
+    const cache = new Cache()
+    cache.set(makeLayer('p', 'layer', [makeFeature()]))
+    const provider = new ResourceProvider(cache, 'regions')
+
+    const result = await provider.getResource('p:layer:0')
+    expect(result).toBeDefined()
+    expect(result!.name).toBe('layer:0')
+  })
+
   it('getResource returns a Signal K region with nested GeoJSON feature', async () => {
     const cache = new Cache()
     cache.set(makeLayer('traficom', 'avoin:TerritorialSeaArea_A', [makeFeature({ id: 42 })]))
