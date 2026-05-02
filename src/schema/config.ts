@@ -27,7 +27,7 @@ export interface PluginConfig {
 }
 
 // buildConfigSchema generates the JSON Schema, optionally enriching typeName
-// with an enum of known layer names discovered from WFS capabilities.
+// with an enum and auto-filling label via if/then conditionals.
 export function buildConfigSchema(knownLayers: { name: string; title: string }[] = []) {
   const typeNameSchema =
     knownLayers.length > 0
@@ -38,13 +38,34 @@ export function buildConfigSchema(knownLayers: { name: string; title: string }[]
         }
       : { type: 'string', minLength: 1 }
 
-  return buildSchemaWith(typeNameSchema)
+  // if/then conditionals: when typeName matches a known layer, set the label default.
+  // react-jsonschema-form applies these defaults when the condition becomes true.
+  const labelConditionals = knownLayers.map((l) => ({
+    if: { properties: { typeName: { const: l.name } }, required: ['typeName'] },
+    then: { properties: { label: { default: l.title } } },
+  }))
+
+  return buildSchemaWith(typeNameSchema, labelConditionals)
 }
 
 // Static export kept for backwards compatibility and tests
-export const configSchema = buildSchemaWith({ type: 'string', minLength: 1 })
+export const configSchema = buildSchemaWith({ type: 'string', minLength: 1 }, [])
 
-function buildSchemaWith(typeNameSchema: object) {
+function buildSchemaWith(typeNameSchema: object, labelConditionals: object[]) {
+  const layerItemSchema: Record<string, unknown> = {
+    type: 'object',
+    required: ['typeName', 'enabled'],
+    properties: {
+      typeName: typeNameSchema,
+      label: { type: 'string' },
+      enabled: { type: 'boolean' },
+      maxFeatures: { type: 'integer', minimum: 1, maximum: 100000 },
+    },
+  }
+  if (labelConditionals.length > 0) {
+    layerItemSchema['allOf'] = labelConditionals
+  }
+
   return {
   type: 'object',
   required: ['providers'],
@@ -62,16 +83,7 @@ function buildSchemaWith(typeNameSchema: object) {
           srs: { type: 'string', default: 'EPSG:4326' },
           layers: {
             type: 'array',
-            items: {
-              type: 'object',
-              required: ['typeName', 'enabled'],
-              properties: {
-                typeName: typeNameSchema,
-                label: { type: 'string' },
-                enabled: { type: 'boolean' },
-                maxFeatures: { type: 'integer', minimum: 1, maximum: 100000 },
-              },
-            },
+            items: layerItemSchema,
           },
           bboxStrategy: { type: 'string', enum: ['static', 'follow-vessel'] },
           staticBbox: {
