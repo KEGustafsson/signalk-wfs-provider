@@ -156,6 +156,7 @@ export class Plugin {
       const manager = new BboxManager(provider, (bbox) => fetchAll(bbox))
       this.bboxManagers.set(provider.id, manager)
 
+      if (this.stopped) return
       if (this.app.streambundle && !this.positionSubscription) {
         const sub = this.app.streambundle
           .getSelfBus('navigation.position')
