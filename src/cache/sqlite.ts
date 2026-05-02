@@ -82,6 +82,11 @@ export class SqliteCache {
     return layers
   }
 
+  delete(providerId: string, typeName: string): void {
+    if (this.closed) return
+    this.db.prepare('DELETE FROM layers WHERE provider_id = ? AND type_name = ?').run(providerId, typeName)
+  }
+
   close(): void {
     if (this.closed) return
     this.closed = true
