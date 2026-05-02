@@ -31,18 +31,42 @@ describe('ResourceProvider', () => {
     expect(result['traficom:avoin:rajoitusalue_a:0']).toBeDefined()
   })
 
-  it('listResources entries are full GeoJSON Features with SK metadata', async () => {
+  it('listResources entries are Signal K region objects with nested feature', async () => {
     const cache = new Cache()
     cache.set(makeLayer('p', 'layer', [makeFeature({ name: 'My Area' })]))
     const provider = new ResourceProvider(cache, 'regions')
 
     const result = await provider.listResources()
     const entry = result['p:layer:0'] as Record<string, unknown>
-    expect(entry.type).toBe('Feature')
-    expect(entry.geometry).toBeDefined()
-    expect((entry.properties as Record<string, unknown>).name).toBe('My Area')
+    // SK region shape: { name, feature: GeoJSON.Feature, $source, timestamp }
+    expect(entry.name).toBe('My Area')
     expect(entry.$source).toBe('wfs-provider:p')
     expect(typeof entry.timestamp).toBe('string')
+    // GeoJSON Feature must be nested under 'feature', not spread at top level
+    const feature = entry.feature as Record<string, unknown>
+    expect(feature.type).toBe('Feature')
+    expect(feature.geometry).toBeDefined()
+    expect((feature.properties as Record<string, unknown>).name).toBe('My Area')
+  })
+
+  it('listResources falls back to empty string name when no name property', async () => {
+    const cache = new Cache()
+    cache.set(makeLayer('p', 'layer', [makeFeature()]))
+    const provider = new ResourceProvider(cache, 'regions')
+
+    const result = await provider.listResources()
+    const entry = result['p:layer:0'] as Record<string, unknown>
+    expect(entry.name).toBe('')
+  })
+
+  it('listResources uses nimi as Finnish name fallback', async () => {
+    const cache = new Cache()
+    cache.set(makeLayer('p', 'layer', [makeFeature({ nimi: 'Alue' })]))
+    const provider = new ResourceProvider(cache, 'regions')
+
+    const result = await provider.listResources()
+    const entry = result['p:layer:0'] as Record<string, unknown>
+    expect(entry.name).toBe('Alue')
   })
 
   it('listResources returns empty object when all layers have 0 features', async () => {
@@ -52,16 +76,16 @@ describe('ResourceProvider', () => {
     expect(await provider.listResources()).toEqual({})
   })
 
-  it('getResource returns a GeoJSON Feature for a valid id', async () => {
+  it('getResource returns a Signal K region with nested GeoJSON feature', async () => {
     const cache = new Cache()
     cache.set(makeLayer('traficom', 'avoin:TerritorialSeaArea_A', [makeFeature({ id: 42 })]))
     const provider = new ResourceProvider(cache, 'regions')
 
     const result = await provider.getResource('traficom:avoin:TerritorialSeaArea_A:0')
     expect(result).toBeDefined()
-    expect(result!.type).toBe('Feature')
-    expect(result!.geometry.type).toBe('Polygon')
-    expect(result!.properties?.['id']).toBe(42)
+    expect(result!.feature.type).toBe('Feature')
+    expect(result!.feature.geometry.type).toBe('Polygon')
+    expect(result!.feature.properties?.['id']).toBe(42)
   })
 
   it('getResource includes Signal K metadata extensions', async () => {
@@ -69,9 +93,9 @@ describe('ResourceProvider', () => {
     cache.set(makeLayer('traficom', 'avoin:TerritorialSeaArea_A', [makeFeature()]))
     const provider = new ResourceProvider(cache, 'regions')
 
-    const result = await provider.getResource('traficom:avoin:TerritorialSeaArea_A:0') as Record<string, unknown>
-    expect(result['$source']).toBe('wfs-provider:traficom')
-    expect(typeof result['timestamp']).toBe('string')
+    const result = await provider.getResource('traficom:avoin:TerritorialSeaArea_A:0')
+    expect(result!.$source).toBe('wfs-provider:traficom')
+    expect(typeof result!.timestamp).toBe('string')
   })
 
   it('getResource handles non-namespaced typeName (provider:layer:index)', async () => {
@@ -81,7 +105,7 @@ describe('ResourceProvider', () => {
 
     const result = await provider.getResource('traficom:rajoitusalue_a:0')
     expect(result).toBeDefined()
-    expect(result!.type).toBe('Feature')
+    expect(result!.feature.type).toBe('Feature')
   })
 
   it('getResource handles namespaced typeName (provider:ns:layer:index)', async () => {
@@ -91,7 +115,7 @@ describe('ResourceProvider', () => {
 
     const result = await provider.getResource('traficom:avoin:depth_areas:0')
     expect(result).toBeDefined()
-    expect(result!.type).toBe('Feature')
+    expect(result!.feature.type).toBe('Feature')
   })
 
   it('getResource returns undefined for out-of-range index', async () => {
@@ -117,7 +141,6 @@ describe('ResourceProvider', () => {
     const cache = new Cache()
     cache.set(makeLayer('p', 'layer', [makeFeature()]))
     const provider = new ResourceProvider(cache, 'regions')
-    // Old-style id with no trailing index — should return undefined
     expect(await provider.getResource('p:layer')).toBeUndefined()
   })
 
