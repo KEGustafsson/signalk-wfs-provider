@@ -61,10 +61,23 @@ export class Plugin {
       : path.join(dataDir, 'wfs-cache')
     this.capabilitiesStoreFile = capabilitiesStorePath(dataDir)
 
+    // Build a set of (providerId, typeName) pairs that are currently configured
+    const configuredLayers = new Set(
+      config.providers.flatMap((p) =>
+        p.layers.filter((l) => l.enabled).map((l) => `${p.id}\0${l.typeName}`),
+      ),
+    )
+
     try {
       this.sqliteCache = new SqliteCache(cacheDir)
       for (const layer of this.sqliteCache.loadAll()) {
-        this.cache.set(layer)
+        if (configuredLayers.has(`${layer.providerId}\0${layer.typeName}`)) {
+          this.cache.set(layer)
+        } else {
+          // Layer was removed from config — purge from SQLite
+          this.sqliteCache.delete(layer.providerId, layer.typeName)
+          this.app.debug(`[${layer.providerId}:${layer.typeName}] removed from config, purged from cache`)
+        }
       }
     } catch (err) {
       this.app.error(`SQLite cache unavailable, continuing in-memory only: ${String(err)}`)
@@ -107,7 +120,9 @@ export class Plugin {
           saveCapabilities(
             this.capabilitiesStoreFile,
             provider.url,
-            capabilities.layers.map((l) => ({ name: l.name, title: l.title })),
+            capabilities.layers
+              .filter(supportsGeoJson)
+              .map((l) => ({ name: l.name, title: l.title })),
           )
         } catch (err) {
           this.app.debug(`[${provider.id}] could not save capabilities cache: ${String(err)}`)

@@ -106,6 +106,18 @@ describe('SqliteCache', () => {
     expect(db2.loadAll()).toHaveLength(1)
   })
 
+  it('delete removes a specific layer and leaves others intact', () => {
+    const db = open()
+    db.save(makeLayer({ typeName: 'layer_a' }))
+    db.save(makeLayer({ typeName: 'layer_b' }))
+
+    db.delete('traficom', 'layer_a')
+
+    const loaded = db.loadAll()
+    expect(loaded).toHaveLength(1)
+    expect(loaded[0].typeName).toBe('layer_b')
+  })
+
   it('loadAll skips rows with corrupt JSON and returns valid ones', () => {
     const dir = tmpDir()
 
