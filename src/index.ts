@@ -1,6 +1,9 @@
+import path from 'node:path'
+import os from 'node:os'
 import { Plugin } from './plugin.js'
 import type { PluginConfig } from './schema/config.js'
-import { configSchema } from './schema/config.js'
+import { buildConfigSchema } from './schema/config.js'
+import { loadAllLayers, capabilitiesStorePath } from './schema/capabilities-store.js'
 
 interface SignalKServerApp {
   debug: (msg: string) => void
@@ -21,7 +24,13 @@ module.exports = function (app: SignalKServerApp) {
     name: 'WFS Provider',
     description:
       'Consumes OGC WFS endpoints and exposes features via Signal K v2 Resources API',
-    schema: configSchema,
+
+    schema() {
+      const dataDir = app.getDataDirPath?.() ?? path.join(os.homedir(), '.signalk')
+      const storeFile = capabilitiesStorePath(dataDir)
+      const knownLayers = loadAllLayers(storeFile)
+      return buildConfigSchema(knownLayers)
+    },
 
     start(config: PluginConfig) {
       if (plugin) {

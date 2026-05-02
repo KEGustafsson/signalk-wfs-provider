@@ -6,6 +6,7 @@ import { Cache } from './cache/index.js'
 import { SqliteCache } from './cache/sqlite.js'
 import { ResourceProvider } from './resources/provider.js'
 import { BboxManager } from './bbox/manager.js'
+import { saveCapabilities, capabilitiesStorePath } from './schema/capabilities-store.js'
 import type { PluginConfig, ProviderConfig } from './schema/config.js'
 import type { Bbox } from './bbox/geometry.js'
 
@@ -41,6 +42,7 @@ export class Plugin {
   private refreshTimers = new Map<string, ReturnType<typeof setInterval>>()
   private positionSubscription: (() => void) | null = null
   private config: PluginConfig | null = null
+  private capabilitiesStoreFile: string | null = null
   private stopped = false
 
   constructor(
@@ -53,12 +55,11 @@ export class Plugin {
     this.config = config
     const resourceType = config.resourceType ?? 'regions'
 
+    const dataDir = this.app.getDataDirPath?.() ?? path.join(os.homedir(), '.signalk')
     const cacheDir = config.cacheDir
       ? config.cacheDir.replace('~', os.homedir())
-      : path.join(
-          this.app.getDataDirPath?.() ?? path.join(os.homedir(), '.signalk'),
-          'wfs-cache',
-        )
+      : path.join(dataDir, 'wfs-cache')
+    this.capabilitiesStoreFile = capabilitiesStorePath(dataDir)
 
     try {
       this.sqliteCache = new SqliteCache(cacheDir)
@@ -100,6 +101,18 @@ export class Plugin {
     try {
       const capabilities = await client.getCapabilities()
       this.app.debug(`[${provider.id}] capabilities loaded: ${capabilities.layers.length} layers`)
+
+      if (this.capabilitiesStoreFile) {
+        try {
+          saveCapabilities(
+            this.capabilitiesStoreFile,
+            provider.url,
+            capabilities.layers.map((l) => ({ name: l.name, title: l.title })),
+          )
+        } catch (err) {
+          this.app.debug(`[${provider.id}] could not save capabilities cache: ${String(err)}`)
+        }
+      }
 
       const capMap = new Map(capabilities.layers.map((l) => [l.name, l]))
       enabledLayers = enabledLayers.filter((layerCfg) => {

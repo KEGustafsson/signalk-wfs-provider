@@ -26,7 +26,26 @@ export interface PluginConfig {
   resourceType?: string
 }
 
-export const configSchema = {
+// buildConfigSchema generates the JSON Schema, optionally enriching typeName
+// with an enum of known layer names discovered from WFS capabilities.
+export function buildConfigSchema(knownLayers: { name: string; title: string }[] = []) {
+  const typeNameSchema =
+    knownLayers.length > 0
+      ? {
+          type: 'string',
+          enum: knownLayers.map((l) => l.name),
+          enumNames: knownLayers.map((l) => (l.title !== l.name ? `${l.title} (${l.name})` : l.name)),
+        }
+      : { type: 'string', minLength: 1 }
+
+  return buildSchemaWith(typeNameSchema)
+}
+
+// Static export kept for backwards compatibility and tests
+export const configSchema = buildSchemaWith({ type: 'string', minLength: 1 })
+
+function buildSchemaWith(typeNameSchema: object) {
+  return {
   type: 'object',
   required: ['providers'],
   properties: {
@@ -47,7 +66,7 @@ export const configSchema = {
               type: 'object',
               required: ['typeName', 'enabled'],
               properties: {
-                typeName: { type: 'string', minLength: 1 },
+                typeName: typeNameSchema,
                 label: { type: 'string' },
                 enabled: { type: 'boolean' },
                 maxFeatures: { type: 'integer', minimum: 1, maximum: 100000 },
@@ -84,4 +103,5 @@ export const configSchema = {
     cacheDir: { type: 'string' },
     resourceType: { type: 'string', default: 'regions' },
   },
+}
 }
