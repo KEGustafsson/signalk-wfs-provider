@@ -23,7 +23,7 @@ interface SignalKApp {
   }) => void
   streambundle?: {
     getSelfBus: (path: string) => {
-      onValue: (cb: (v: { value: unknown }) => void) => { unsubscribe: () => void }
+      onValue: (cb: (v: { value: unknown }) => void) => () => void
     }
   }
   setPluginStatus?: (msg: string) => void
@@ -39,7 +39,7 @@ export class Plugin {
   private clients = new Map<string, WfsClient>()
   private bboxManagers = new Map<string, BboxManager>()
   private refreshTimers = new Map<string, ReturnType<typeof setInterval>>()
-  private positionSubscription: { unsubscribe: () => void } | null = null
+  private positionSubscription: (() => void) | null = null
   private config: PluginConfig | null = null
   private stopped = false
 
@@ -259,7 +259,7 @@ export class Plugin {
     this.refreshTimers.clear()
     for (const mgr of this.bboxManagers.values()) mgr.destroy()
     this.bboxManagers.clear()
-    this.positionSubscription?.unsubscribe()
+    this.positionSubscription?.()
     this.positionSubscription = null
     this.sqliteCache?.close()
     this.sqliteCache = null
