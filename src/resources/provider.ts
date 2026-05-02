@@ -53,9 +53,11 @@ export class ResourceProvider {
 
   private toSkRegion(feature: GeoJSON.Feature, providerId: string, fetchedAt: Date): SkRegion {
     const props = feature.properties ?? {}
+    const description =
+      (props['description'] as string | undefined) ?? (props['kuvaus'] as string | undefined)
     return {
       name: (props['name'] as string | undefined) ?? (props['nimi'] as string | undefined) ?? '',
-      description: (props['description'] as string | undefined) ?? (props['kuvaus'] as string | undefined),
+      ...(description !== undefined && { description }),
       feature,
       $source: `wfs-provider:${providerId}`,
       timestamp: fetchedAt.toISOString(),

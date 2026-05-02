@@ -49,6 +49,36 @@ describe('ResourceProvider', () => {
     expect((feature.properties as Record<string, unknown>).name).toBe('My Area')
   })
 
+  it('listResources uses description property when present', async () => {
+    const cache = new Cache()
+    cache.set(makeLayer('p', 'layer', [makeFeature({ description: 'Test area' })]))
+    const provider = new ResourceProvider(cache, 'regions')
+
+    const result = await provider.listResources()
+    const entry = result['p:layer:0'] as Record<string, unknown>
+    expect(entry.description).toBe('Test area')
+  })
+
+  it('listResources uses kuvaus as Finnish description fallback', async () => {
+    const cache = new Cache()
+    cache.set(makeLayer('p', 'layer', [makeFeature({ kuvaus: 'Alue kuvaus' })]))
+    const provider = new ResourceProvider(cache, 'regions')
+
+    const result = await provider.listResources()
+    const entry = result['p:layer:0'] as Record<string, unknown>
+    expect(entry.description).toBe('Alue kuvaus')
+  })
+
+  it('listResources omits description when no description property', async () => {
+    const cache = new Cache()
+    cache.set(makeLayer('p', 'layer', [makeFeature()]))
+    const provider = new ResourceProvider(cache, 'regions')
+
+    const result = await provider.listResources()
+    const entry = result['p:layer:0'] as Record<string, unknown>
+    expect(entry.description).toBeUndefined()
+  })
+
   it('listResources falls back to empty string name when no name property', async () => {
     const cache = new Cache()
     cache.set(makeLayer('p', 'layer', [makeFeature()]))
