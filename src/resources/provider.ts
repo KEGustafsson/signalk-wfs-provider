@@ -11,15 +11,10 @@ export class ResourceProvider {
     for (const layer of this.cache.getAll()) {
       layer.featureCollection.features.forEach((feature, index) => {
         const id = `${layer.providerId}:${layer.typeName}:${index}`
-        const name =
-          (feature.properties?.['name'] as string | undefined) ??
-          (feature.properties?.['Name'] as string | undefined) ??
-          `${layer.typeName}:${index}`
         result[id] = {
+          ...feature,
           $source: `wfs-provider:${layer.providerId}`,
           timestamp: layer.fetchedAt.toISOString(),
-          name,
-          description: layer.typeName,
         }
       })
     }
