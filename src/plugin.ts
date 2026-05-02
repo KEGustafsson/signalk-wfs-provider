@@ -222,10 +222,10 @@ export class Plugin {
     const srs = provider.srs ?? 'EPSG:4326'
     const needsReproject = !isWgs84(srs)
 
-    // Bbox is always stored in WGS84; reproject to server SRS for the request if needed
-    const requestBbox = bbox && needsReproject ? bboxToSrs(bbox, srs) : bbox
-
     try {
+      // Bbox is always stored in WGS84; reproject to server SRS for the request if needed
+      const requestBbox = bbox && needsReproject ? bboxToSrs(bbox, srs) : bbox
+
       const result = await client.getFeature({
         typeName,
         bbox: requestBbox ?? undefined,

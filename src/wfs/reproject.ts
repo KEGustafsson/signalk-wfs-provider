@@ -63,7 +63,7 @@ export function bboxToSrs(bbox: Bbox, targetSrs: string): Bbox {
   return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)]
 }
 
-// Reproject a GeoJSON FeatureCollection from fromSrs to WGS84 in-place (returns new object).
+// Reproject a GeoJSON FeatureCollection from fromSrs to WGS84 (returns a new object).
 export function reprojectToWgs84(
   fc: GeoJSON.FeatureCollection,
   fromSrs: string,
