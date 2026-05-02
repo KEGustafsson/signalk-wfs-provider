@@ -207,7 +207,7 @@ The full list (36 layers) is returned by `GetCapabilities`. Commonly useful laye
 
 To see the full capabilities document:
 
-```
+```text
 https://julkinen.traficom.fi/inspirepalvelu/avoin/wfs?service=WFS&version=2.0.0&request=GetCapabilities
 ```
 
@@ -230,7 +230,7 @@ Resources are served under the configured `resourceType` (default: `wfs-features
 
 ### List all cached layers
 
-```
+```http
 GET /signalk/v2/api/resources/wfs-features
 ```
 
@@ -255,7 +255,7 @@ Response:
 
 ### Get a single layer
 
-```
+```http
 GET /signalk/v2/api/resources/wfs-features/traficom:avoin:TerritorialSeaArea_A
 ```
 
