@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ows:ExceptionReport version="2.0.0"
+  xmlns:ows="http://www.opengis.net/ows/1.1"
+  language="en">
+  <ows:Exception exceptionCode="InvalidParameterValue" locator="typeName">
+    <ows:ExceptionText>Unknown feature type: nonexistent_layer</ows:ExceptionText>
+  </ows:Exception>
+</ows:ExceptionReport>
