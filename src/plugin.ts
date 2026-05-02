@@ -107,7 +107,9 @@ export class Plugin {
           saveCapabilities(
             this.capabilitiesStoreFile,
             provider.url,
-            capabilities.layers.map((l) => ({ name: l.name, title: l.title })),
+            capabilities.layers
+              .filter(supportsGeoJson)
+              .map((l) => ({ name: l.name, title: l.title })),
           )
         } catch (err) {
           this.app.debug(`[${provider.id}] could not save capabilities cache: ${String(err)}`)
