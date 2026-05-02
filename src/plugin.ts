@@ -7,6 +7,7 @@ import { SqliteCache } from './cache/sqlite.js'
 import { ResourceProvider } from './resources/provider.js'
 import { BboxManager } from './bbox/manager.js'
 import { saveCapabilities, capabilitiesStorePath } from './schema/capabilities-store.js'
+import { isWgs84, bboxToSrs, reprojectToWgs84 } from './wfs/reproject.js'
 import type { PluginConfig, ProviderConfig } from './schema/config.js'
 import type { Bbox } from './bbox/geometry.js'
 
@@ -218,13 +219,18 @@ export class Plugin {
     bbox?: Bbox,
   ): Promise<void> {
     const existing = this.cache.get(provider.id, typeName)
+    const srs = provider.srs ?? 'EPSG:4326'
+    const needsReproject = !isWgs84(srs)
+
+    // Bbox is always stored in WGS84; reproject to server SRS for the request if needed
+    const requestBbox = bbox && needsReproject ? bboxToSrs(bbox, srs) : bbox
 
     try {
       const result = await client.getFeature({
         typeName,
-        bbox: bbox ?? undefined,
-        bboxSrs: provider.srs ?? 'EPSG:4326',
-        outputSrs: provider.srs ?? 'EPSG:4326',
+        bbox: requestBbox ?? undefined,
+        bboxSrs: srs,
+        outputSrs: srs,
         count: maxFeatures,
         ifNoneMatch: existing?.etag,
         ifModifiedSince: existing?.lastModified,
@@ -238,14 +244,19 @@ export class Plugin {
       }
 
       if (result.featureCollection) {
-        const responseBbox = (result.featureCollection as { bbox?: unknown }).bbox
+        // Reproject features to WGS84 if the server responded in a projected CRS
+        const featureCollection = needsReproject
+          ? reprojectToWgs84(result.featureCollection, srs)
+          : result.featureCollection
+
+        const responseBbox = (featureCollection as { bbox?: unknown }).bbox
         const responseBboxValid =
           Array.isArray(responseBbox) && responseBbox.length === 4 &&
           responseBbox.every((n) => typeof n === 'number' && Number.isFinite(n))
         const layer = {
           providerId: provider.id,
           typeName,
-          featureCollection: result.featureCollection,
+          featureCollection,
           fetchedAt: new Date(),
           bbox: bbox ?? (responseBboxValid ? (responseBbox as Bbox) : ([-180, -90, 180, 90] as Bbox)),
           etag: result.etag,
