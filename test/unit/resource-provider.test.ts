@@ -31,22 +31,18 @@ describe('ResourceProvider', () => {
     expect(result['traficom:avoin:rajoitusalue_a:0']).toBeDefined()
   })
 
-  it('listResources uses feature name property when present', async () => {
+  it('listResources entries are full GeoJSON Features with SK metadata', async () => {
     const cache = new Cache()
     cache.set(makeLayer('p', 'layer', [makeFeature({ name: 'My Area' })]))
     const provider = new ResourceProvider(cache, 'regions')
 
     const result = await provider.listResources()
-    expect((result['p:layer:0'] as Record<string, unknown>).name).toBe('My Area')
-  })
-
-  it('listResources falls back to typeName:index when no name property', async () => {
-    const cache = new Cache()
-    cache.set(makeLayer('p', 'layer', [makeFeature()]))
-    const provider = new ResourceProvider(cache, 'regions')
-
-    const result = await provider.listResources()
-    expect((result['p:layer:0'] as Record<string, unknown>).name).toBe('layer:0')
+    const entry = result['p:layer:0'] as Record<string, unknown>
+    expect(entry.type).toBe('Feature')
+    expect(entry.geometry).toBeDefined()
+    expect((entry.properties as Record<string, unknown>).name).toBe('My Area')
+    expect(entry.$source).toBe('wfs-provider:p')
+    expect(typeof entry.timestamp).toBe('string')
   })
 
   it('listResources returns empty object when all layers have 0 features', async () => {
